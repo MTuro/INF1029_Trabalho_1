@@ -20,19 +20,27 @@ int matrix_matrix_mult(struct matrix *matrixA, struct matrix *matrixB, struct ma
     if (matrixA->width != matrixB->height) return 0;
     if (matrixA->height != matrixC->height || matrixB->width != matrixC->width) return 0;
 
-    unsigned long int m = matrixA->height;
-    unsigned long int n = matrixA->width;   // também = B.height
-    unsigned long int p = matrixB->width;
+    unsigned long int AH = matrixA->height;
+    unsigned long int AW = matrixA->width;   // também = B.height
+    unsigned long int BW = matrixB->width;
 
-    for (unsigned long int i = 0; i < m; i++) {
-        for (unsigned long int j = 0; j < p; j++) {
-            float sum = 0.0f;
-            for (unsigned long int k = 0; k < n; k++) {
-                sum += matrixA->rows[i * n + k] * matrixB->rows[k * p + j];
-            }
-            matrixC->rows[i * p + j] = sum;
+    // for (unsigned long int i = 0; i < AH; i++) {
+    //     for (unsigned long int j = 0; j < BW; j++) {
+    //         float sum = 0.0f;
+    //         for (unsigned long int k = 0; k < AW; k++) {
+    //             sum += matrixA->rows[i * AW + k] * matrixB->rows[k * BW + j];
+    //         }
+    //         matrixC->rows[i * BW + j] = sum;
+    //     }
+    // }
+
+ 
+    for (unsigned long int i = 0; i < AH * AW; i++) {
+        for (unsigned long int j = 0; j < BW * AW; j++) {
+            matrixC->rows[(i * AH) + (j % BW)] += matrixA->rows[i] * matrixB->rows[j];
         }
     }
+
 
     return 1;
 }

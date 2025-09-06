@@ -5,7 +5,7 @@
 #include "timer.h"
 
 int main(int argc, char *argv[]) {
-    if (argc != 9) {
+    if (argc != 10) {
         printf("Usage: %s <scalar> <A_height> <A_width> <B_height> <B_width> <A_file> <B_file> <result1_file> <result2_file>\n", argv[0]);
         return 1;
     }

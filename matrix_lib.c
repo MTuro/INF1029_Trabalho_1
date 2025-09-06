@@ -34,13 +34,31 @@ int matrix_matrix_mult(struct matrix *matrixA, struct matrix *matrixB, struct ma
     //     }
     // }
 
- 
-    for (unsigned long int i = 0; i < AH * AW; i++) {
-        for (unsigned long int j = 0; j < BW * AW; j++) {
-            matrixC->rows[(i * AH) + (j % BW)] += matrixA->rows[i] * matrixB->rows[j];
+    for (unsigned long int i = 0; i < AH; i++) {
+        unsigned long int i_AW = i * AW;
+        unsigned long int i_BW = i * BW;
+        for (unsigned long int j = 0; j < AW; j++) {
+            float a_elem = matrixA->rows[i_AW + j];
+            unsigned long int j_BW = j * BW;
+            for (unsigned long int k = 0; k < BW; k++) {
+                matrixC->rows[i_BW + k] +=  a_elem * matrixB->rows[j_BW + k];
+            }
         }
     }
 
+    // print_matrix(matrixA);
+    // print_matrix(matrixB);
+    // print_matrix(matrixC);
 
     return 1;
+}
+
+void print_matrix(struct matrix *matrix) {
+    for (unsigned long int i = 0; i < matrix->height; i++) {
+        printf("\n");
+        for (unsigned long int j = 0; j < matrix->width; j++) {
+            printf("%.2f ", matrix->rows[i * matrix->width + j]);
+        }
+    }
+    printf("\n");
 }

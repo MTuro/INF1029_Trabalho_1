@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "matrix_lib.h"
 
+#define MAX_PRINT_SIZE 256
+
 int scalar_matrix_mult(float scalar_value, struct matrix *matrix) {
     if (matrix == NULL || matrix->rows == NULL) return 0;
 
@@ -25,14 +27,14 @@ int matrix_matrix_mult(struct matrix *matrixA, struct matrix *matrixB, struct ma
     unsigned long int BW = matrixB->width;
 
     // for (unsigned long int i = 0; i < AH; i++) {
-    //     for (unsigned long int j = 0; j < BW; j++) {
-    //         float sum = 0.0f;
-    //         for (unsigned long int k = 0; k < AW; k++) {
-    //             sum += matrixA->rows[i * AW + k] * matrixB->rows[k * BW + j];
-    //         }
-    //         matrixC->rows[i * BW + j] = sum;
-    //     }
-    // }
+        // for (unsigned long int j = 0; j < BW; j++) {
+           //  float sum = 0.0f;
+           //  for (unsigned long int k = 0; k < AW; k++) {
+           //      sum += matrixA->rows[i * AW + k] * matrixB->rows[k * BW + j];
+         //    }
+         //    matrixC->rows[i * BW + j] = sum;
+       //  }
+     //}
 
     for (unsigned long int i = 0; i < AH; i++) {
         unsigned long int i_AW = i * AW;
@@ -46,18 +48,20 @@ int matrix_matrix_mult(struct matrix *matrixA, struct matrix *matrixB, struct ma
         }
     }
 
-    // print_matrix(matrixA);
-    // print_matrix(matrixB);
-    // print_matrix(matrixC);
+    //print_matrix(matrixA);
+    //print_matrix(matrixB);
+    print_matrix(matrixC);
 
     return 1;
 }
 
 void print_matrix(struct matrix *matrix) {
-    for (unsigned long int i = 0; i < matrix->height; i++) {
+    unsigned long int printed_count = 0;
+    for (unsigned long int i = 0; i < matrix->height && printed_count < MAX_PRINT_SIZE; i++) {
         printf("\n");
-        for (unsigned long int j = 0; j < matrix->width; j++) {
+        for (unsigned long int j = 0; j < matrix->width && printed_count < MAX_PRINT_SIZE; j++) {
             printf("%.2f ", matrix->rows[i * matrix->width + j]);
+            printed_count++;
         }
     }
     printf("\n");

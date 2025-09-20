@@ -20,14 +20,15 @@ int main(int argc, char *argv[]) {
     char *result2_file = argv[9];
 
     // Allocate matrices
-    struct matrix A = {A_height, A_width, malloc(A_height * A_width * sizeof(float))};
-    struct matrix B = {B_height, B_width, malloc(B_height * B_width * sizeof(float))};
-    struct matrix C = {A_height, B_width, calloc(A_height * B_width, sizeof(float))};
+    struct matrix A = {A_height, A_width, aligned_alloc(32, A_height * A_width * sizeof(float))};
+    struct matrix B = {B_height, B_width, aligned_alloc(32, B_height * B_width * sizeof(float))};
+    struct matrix C = {A_height, B_width, aligned_alloc(32, A_height * B_width * sizeof(float))};
     if (!A.rows || !B.rows || !C.rows) {
         printf("Memory allocation error.\n");
         return 1;
     }
-
+    memset(C.rows, 0, A_height * B_width * sizeof(float));
+    
     // Load matrix A
     FILE *fa = fopen(A_file, "rb");
     if (!fa || fread(A.rows, sizeof(float), A_height * A_width, fa) != A_height * A_width) {

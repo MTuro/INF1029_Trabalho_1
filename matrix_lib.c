@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <immintrin.h>
 #include "matrix_lib.h"
 
 #define MAX_PRINT_SIZE 256
@@ -6,9 +7,13 @@
 int scalar_matrix_mult(float scalar_value, struct matrix *matrix) {
     if (matrix == NULL || matrix->rows == NULL) return 0;
 
+    __m256 scalar_vec = _mm256_set1_ps(scalar_value);
     unsigned long int size = matrix->height * matrix->width;
-    for (unsigned long int i = 0; i < size; i++) {
-        matrix->rows[i] *= scalar_value;
+    for (unsigned long int i = 0; i < size; i += 8) {
+        //matrix->rows[i] *= scalar_value;
+        __m256 matrix_vec = _mm256_load_ps(matrix->rows + i);
+        __m256 result = _mm256_mul_ps(scalar_vec, matrix_vec);
+        _mm256_store_ps(matrix->rows + i, result);
     }
 
     return 1;
@@ -26,24 +31,43 @@ int matrix_matrix_mult(struct matrix *matrixA, struct matrix *matrixB, struct ma
     unsigned long int AW = matrixA->width;   // também = B.height
     unsigned long int BW = matrixB->width;
 
+    // original
     // for (unsigned long int i = 0; i < AH; i++) {
-        // for (unsigned long int j = 0; j < BW; j++) {
-           //  float sum = 0.0f;
-           //  for (unsigned long int k = 0; k < AW; k++) {
-           //      sum += matrixA->rows[i * AW + k] * matrixB->rows[k * BW + j];
-         //    }
-         //    matrixC->rows[i * BW + j] = sum;
-       //  }
-     //}
+    //     for (unsigned long int j = 0; j < BW; j++) {
+    //         float sum = 0.0f;
+    //         for (unsigned long int k = 0; k < AW; k++) {
+    //             sum += matrixA->rows[i * AW + k] * matrixB->rows[k * BW + j];
+    //         }
+    //         matrixC->rows[i * BW + j] = sum;
+    //     }
+    // }
 
+    // optimized
+    // for (unsigned long int i = 0; i < AH; i++) {
+    //     unsigned long int i_AW = i * AW;
+    //     unsigned long int i_BW = i * BW;
+    //     for (unsigned long int j = 0; j < AW; j++) {
+    //         float a_elem = matrixA->rows[i_AW + j];
+    //         unsigned long int j_BW = j * BW;
+    //         for (unsigned long int k = 0; k < BW; k++) {
+    //             matrixC->rows[i_BW + k] +=  a_elem * matrixB->rows[j_BW + k];
+    //         }
+    //     }
+    // }
+
+    // vectorial optmized
     for (unsigned long int i = 0; i < AH; i++) {
         unsigned long int i_AW = i * AW;
         unsigned long int i_BW = i * BW;
         for (unsigned long int j = 0; j < AW; j++) {
             float a_elem = matrixA->rows[i_AW + j];
             unsigned long int j_BW = j * BW;
-            for (unsigned long int k = 0; k < BW; k++) {
-                matrixC->rows[i_BW + k] +=  a_elem * matrixB->rows[j_BW + k];
+            __m256 a_elem_vec = _mm256_set1_ps(matrixA->rows[i_AW + j]);
+            for (unsigned long int k = 0; k < BW; k += 8) {
+                __m256 matrixB_vec = _mm256_load_ps(matrixB->rows + j_BW + k);
+                __m256 matrixC_vec = _mm256_load_ps(matrixC->rows + i_BW + k);
+                __m256 result = _mm256_fmadd_ps(a_elem_vec, matrixB_vec, matrixC_vec);
+                _mm256_store_ps(matrixC->rows + i_BW + k, result);
             }
         }
     }

@@ -9,11 +9,12 @@ int scalar_matrix_mult(float scalar_value, struct matrix *matrix) {
 
     __m256 scalar_vec = _mm256_set1_ps(scalar_value);
     unsigned long int size = matrix->height * matrix->width;
-    for (unsigned long int i = 0; i < size; i += 8) {
+    float *curr = matrix->rows;
+    for (unsigned long int i = 0; i < size; i += 8, curr += 8) {
         //matrix->rows[i] *= scalar_value;
-        __m256 matrix_vec = _mm256_load_ps(matrix->rows + i);
+        __m256 matrix_vec = _mm256_load_ps(curr);
         __m256 result = _mm256_mul_ps(scalar_vec, matrix_vec);
-        _mm256_store_ps(matrix->rows + i, result);
+        _mm256_store_ps(curr, result);
     }
 
     return 1;
@@ -57,17 +58,16 @@ int matrix_matrix_mult(struct matrix *matrixA, struct matrix *matrixB, struct ma
 
     // vectorial optmized
     for (unsigned long int i = 0; i < AH; i++) {
-        unsigned long int i_AW = i * AW;
-        unsigned long int i_BW = i * BW;
-        for (unsigned long int j = 0; j < AW; j++) {
-            float a_elem = matrixA->rows[i_AW + j];
-            unsigned long int j_BW = j * BW;
-            __m256 a_elem_vec = _mm256_set1_ps(matrixA->rows[i_AW + j]);
-            for (unsigned long int k = 0; k < BW; k += 8) {
-                __m256 matrixB_vec = _mm256_load_ps(matrixB->rows + j_BW + k);
-                __m256 matrixC_vec = _mm256_load_ps(matrixC->rows + i_BW + k);
+        float *currA = matrixA->rows + i * AW;
+        for (unsigned long int j = 0; j < AW; j++, currA++) {
+            float *currB = matrixB->rows + j * BW;
+            float *currC = matrixC->rows + i * BW;
+            __m256 a_elem_vec = _mm256_set1_ps(*currA);
+            for (unsigned long int k = 0; k < BW; k += 8, currB += 8, currC += 8) {
+                __m256 matrixB_vec = _mm256_load_ps(currB);
+                __m256 matrixC_vec = _mm256_load_ps(currC);
                 __m256 result = _mm256_fmadd_ps(a_elem_vec, matrixB_vec, matrixC_vec);
-                _mm256_store_ps(matrixC->rows + i_BW + k, result);
+                _mm256_store_ps(currC, result);
             }
         }
     }

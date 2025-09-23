@@ -72,8 +72,11 @@ int matrix_matrix_mult(struct matrix *matrixA, struct matrix *matrixB, struct ma
         }
     }
 
-    //print_matrix(matrixA);
-    //print_matrix(matrixB);
+    printf("\nmatriz a:");
+    print_matrix(matrixA);
+    printf("\nmatriz b:");
+    print_matrix(matrixB);
+    printf("\nmatriz c:");
     print_matrix(matrixC);
 
     return 1;

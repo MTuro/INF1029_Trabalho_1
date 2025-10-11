@@ -5,8 +5,8 @@
 #include "timer.h"
 
 int main(int argc, char *argv[]) {
-    if (argc != 10) {
-        printf("Usage: %s <scalar> <A_height> <A_width> <B_height> <B_width> <A_file> <B_file> <result1_file> <result2_file>\n", argv[0]);
+    if (argc != 11) {
+        printf("Usage: %s <scalar> <A_height> <A_width> <B_height> <B_width> <num_threads> <A_file> <B_file> <result1_file> <result2_file>\n", argv[0]);
         return 1;
     }
     float scalar = atof(argv[1]);
@@ -14,10 +14,13 @@ int main(int argc, char *argv[]) {
     unsigned long int A_width  = strtoul(argv[3], NULL, 10);
     unsigned long int B_height = strtoul(argv[4], NULL, 10);
     unsigned long int B_width  = strtoul(argv[5], NULL, 10);
-    char *A_file = argv[6];
-    char *B_file = argv[7];
-    char *result1_file = argv[8];
-    char *result2_file = argv[9];
+    unsigned long int num_threads = strtoul(argv[6], NULL, 10);
+    char *A_file = argv[7];
+    char *B_file = argv[8];
+    char *result1_file = argv[9];
+    char *result2_file = argv[10];
+
+    set_number_threads(num_threads);
 
     // Allocate matrices
     struct matrix A = {A_height, A_width, aligned_alloc(32, A_height * A_width * sizeof(float))};

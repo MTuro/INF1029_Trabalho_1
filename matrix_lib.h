@@ -7,6 +7,9 @@ struct matrix {
     float *rows;                // vetor com height*width floats
 };
 
+// Define o numero de threads
+void set_number_threads(unsigned long int num_threads);
+
 // Multiplicação escalar * matriz
 int scalar_matrix_mult(float scalar_value, struct matrix *matrix);
 

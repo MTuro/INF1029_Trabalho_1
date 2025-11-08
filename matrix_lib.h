@@ -7,6 +7,9 @@ struct matrix {
     float *rows;                // vetor com height*width floats
 };
 
+int blocksPerGrid;
+int threadsPerBlock;
+
 // Multiplicação escalar * matriz
 int scalar_matrix_mult(float scalar_value, struct matrix *matrix);
 

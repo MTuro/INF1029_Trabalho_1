@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "matrix_lib.h"
+extern "C" {
 #include "timer.h"
+}
 
 int main(int argc, char *argv[]) {
     if (argc != 10) {
@@ -20,9 +22,9 @@ int main(int argc, char *argv[]) {
     char *result2_file = argv[9];
 
     // Allocate matrices
-    struct matrix A = {A_height, A_width, malloc(A_height * A_width * sizeof(float))};
-    struct matrix B = {B_height, B_width, malloc(B_height * B_width * sizeof(float))};
-    struct matrix C = {A_height, B_width, calloc(A_height * B_width, sizeof(float))};
+    struct matrix A = {A_height, A_width, (float *) malloc(A_height * A_width * sizeof(float))};
+    struct matrix B = {B_height, B_width, (float *) malloc(B_height * B_width * sizeof(float))};
+    struct matrix C = {A_height, B_width, (float *) calloc(A_height * B_width, sizeof(float))};
     if (!A.rows || !B.rows || !C.rows) {
         printf("Memory allocation error.\n");
         return 1;

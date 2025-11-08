@@ -1,15 +1,42 @@
 #include <stdio.h>
+#include <cuda_runtime.h>
 #include "matrix_lib.h"
+
+#define DATASET_SIZE 1024000
 
 #define MAX_PRINT_SIZE 256
 
+__global__ 
+void scalar_mult(unsigned long int n, float scalar, float *d_y)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+   
+    if (index < n) {
+    	d_y[index] *= scalar;
+    }
+}
+
 int scalar_matrix_mult(float scalar_value, struct matrix *matrix) {
     if (matrix == NULL || matrix->rows == NULL) return 0;
+    cudaError_t cudaError;
+    float *d_matrix;
 
-    unsigned long int size = matrix->height * matrix->width;
-    for (unsigned long int i = 0; i < size; i++) {
-        matrix->rows[i] *= scalar_value;
+    unsigned long int N = matrix->height * matrix->width;
+    unsigned long int size = N * sizeof(float);
+
+    cudaError = cudaMalloc(&d_matrix, size);
+    if (cudaError != cudaSuccess) {
+        return 0;
     }
+
+    cudaError = cudaMemcpy(d_matrix, matrix->rows, size, cudaMemcpyHostToDevice);
+    if (cudaError != cudaSuccess) {
+        return 0;
+    }
+
+    scalar_mult<<<blocksPerGrid, threadsPerBlock>>>(N, scalar_value, d_matrix);
+
+    cudaFree(d_matrix);
 
     return 1;
 }

@@ -2,48 +2,49 @@
 #include <cuda_runtime.h>
 #include "matrix_lib.h"
 
-#define DATASET_SIZE 1024000
-
 #define MAX_PRINT_SIZE 256
+
+unsigned long int blocksPerGrid = 1;
+unsigned long int threadsPerBlock = 1;
+
+__host__
+void set_gpu_variables(unsigned long int tpb, unsigned long int bpg) {
+    threadsPerBlock = tpb;
+    blocksPerGrid = bpg;
+}
 
 __global__ 
 void scalar_mult(unsigned long int n, float scalar, float *d_y)
 {
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned long int index = blockIdx.x * blockDim.x + threadIdx.x;
    
     if (index < n) {
     	d_y[index] *= scalar;
     }
 }
 
+__host__
 int scalar_matrix_mult(float scalar_value, struct matrix *matrix) {
-    if (matrix == NULL || matrix->rows == NULL) return 0;
-    cudaError_t cudaError;
-    float *d_matrix;
+    if (matrix == NULL || matrix->h_rows == NULL || matrix->d_rows == NULL) return 0;
 
     unsigned long int N = matrix->height * matrix->width;
     unsigned long int size = N * sizeof(float);
 
-    cudaError = cudaMalloc(&d_matrix, size);
-    if (cudaError != cudaSuccess) {
-        return 0;
-    }
+    int blockSize = threadsPerBlock;
+    int numBlocks = (size + blockSize - 1) / blockSize;
+    if (numBlocks > blocksPerGrid) numBlocks = blocksPerGrid;
+    printf("block size: %d; num blocks: %d\n", blockSize, numBlocks);
+    scalar_mult<<<numBlocks, blockSize>>>(N, scalar_value, matrix->d_rows);
 
-    cudaError = cudaMemcpy(d_matrix, matrix->rows, size, cudaMemcpyHostToDevice);
-    if (cudaError != cudaSuccess) {
-        return 0;
-    }
-
-    scalar_mult<<<blocksPerGrid, threadsPerBlock>>>(N, scalar_value, d_matrix);
-
-    cudaFree(d_matrix);
+    cudaDeviceSynchronize();
 
     return 1;
 }
 
 int matrix_matrix_mult(struct matrix *matrixA, struct matrix *matrixB, struct matrix *matrixC) {
     if (!matrixA || !matrixB || !matrixC) return 0;
-    if (!matrixA->rows || !matrixB->rows || !matrixC->rows) return 0;
+    if (!matrixA->h_rows || !matrixB->h_rows || !matrixC->h_rows) return 0;
+    if (!matrixA->d_rows || !matrixB->d_rows || !matrixC->d_rows) return 0;
 
     // Condição de multiplicação: A.width == B.height
     if (matrixA->width != matrixB->height) return 0;
@@ -63,17 +64,17 @@ int matrix_matrix_mult(struct matrix *matrixA, struct matrix *matrixB, struct ma
        //  }
      //}
 
-    for (unsigned long int i = 0; i < AH; i++) {
-        unsigned long int i_AW = i * AW;
-        unsigned long int i_BW = i * BW;
-        for (unsigned long int j = 0; j < AW; j++) {
-            float a_elem = matrixA->rows[i_AW + j];
-            unsigned long int j_BW = j * BW;
-            for (unsigned long int k = 0; k < BW; k++) {
-                matrixC->rows[i_BW + k] +=  a_elem * matrixB->rows[j_BW + k];
-            }
-        }
-    }
+    // for (unsigned long int i = 0; i < AH; i++) {
+    //     unsigned long int i_AW = i * AW;
+    //     unsigned long int i_BW = i * BW;
+    //     for (unsigned long int j = 0; j < AW; j++) {
+    //         float a_elem = matrixA->rows[i_AW + j];
+    //         unsigned long int j_BW = j * BW;
+    //         for (unsigned long int k = 0; k < BW; k++) {
+    //             matrixC->rows[i_BW + k] +=  a_elem * matrixB->rows[j_BW + k];
+    //         }
+    //     }
+    // }
 
     //print_matrix(matrixA);
     //print_matrix(matrixB);
@@ -87,7 +88,7 @@ void print_matrix(struct matrix *matrix) {
     for (unsigned long int i = 0; i < matrix->height && printed_count < MAX_PRINT_SIZE; i++) {
         printf("\n");
         for (unsigned long int j = 0; j < matrix->width && printed_count < MAX_PRINT_SIZE; j++) {
-            printf("%.2f ", matrix->rows[i * matrix->width + j]);
+            printf("%.2f ", matrix->h_rows[i * matrix->width + j]);
             printed_count++;
         }
     }

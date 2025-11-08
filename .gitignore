@@ -1,0 +1,4 @@
+*.dat
+matrix_lib_test
+gen_matrix_bin
+.vscode

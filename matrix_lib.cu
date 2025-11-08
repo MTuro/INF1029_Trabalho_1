@@ -14,12 +14,12 @@ void set_gpu_variables(unsigned long int tpb, unsigned long int bpg) {
 }
 
 __global__ 
-void scalar_mult(unsigned long int n, float scalar, float *d_y)
+void scalar_mult(unsigned long int n, unsigned long int offset, float scalar, float *rows)
 {
     unsigned long int index = blockIdx.x * blockDim.x + threadIdx.x;
    
     if (index < n) {
-    	d_y[index] *= scalar;
+    	rows[index + offset] *= scalar;
     }
 }
 
@@ -27,17 +27,78 @@ __host__
 int scalar_matrix_mult(float scalar_value, struct matrix *matrix) {
     if (matrix == NULL || matrix->h_rows == NULL || matrix->d_rows == NULL) return 0;
 
-    unsigned long int N = matrix->height * matrix->width;
-    unsigned long int size = N * sizeof(float);
+    unsigned long int N;
+    unsigned long int size;
+    
+    // Allocation type
+    if (matrix->alloc_mode) {
+        printf("Full alloc scalar_matrix_mult\n");
+        N = matrix->height * matrix->width;
+        size = N * sizeof(float);
 
-    int blockSize = threadsPerBlock;
-    int numBlocks = (size + blockSize - 1) / blockSize;
-    if (numBlocks > blocksPerGrid) numBlocks = blocksPerGrid;
-    printf("block size: %d; num blocks: %d\n", blockSize, numBlocks);
-    scalar_mult<<<numBlocks, blockSize>>>(N, scalar_value, matrix->d_rows);
+        unsigned long int blockSize = threadsPerBlock;
+        unsigned long int numBlocks = (N + blockSize - 1) / blockSize;
+        if (numBlocks > blocksPerGrid) numBlocks = blocksPerGrid;
+        unsigned long int threads = blockSize * numBlocks;
 
-    cudaDeviceSynchronize();
+        // Not enough threads for 1 call
+        if (N > threads) {
+            unsigned long int it = N / threads;
+            unsigned long int n = threads;
+            float *m_rows = matrix->d_rows;
+            printf("it: %lu; n: %lu;\n", it, n);
+            for (unsigned long int i = 0; i < it; i++, m_rows += n) {
+                // printf("i: %lu\n", i);
+                scalar_mult<<<numBlocks, blockSize>>>(n, n*i, scalar_value, m_rows);
+            }
+            // last iteration
+            scalar_mult<<<numBlocks, blockSize>>>((n * (it + 1)) % N, n*it, scalar_value, m_rows + n);
+        // Enough threads for 1 call
+        } else {
+            scalar_mult<<<numBlocks, blockSize>>>(N, 0, scalar_value, matrix->d_rows);
+        }
+        
+        cudaDeviceSynchronize();
+        cudaMemcpy(matrix->h_rows, matrix->d_rows, size, cudaMemcpyDeviceToHost);
+    } else {
+        printf("Partial alloc scalar_matrix_mult\n");
+        N = matrix->width;
+        size = N * sizeof(float);
 
+        // Makes sure memory is at start
+        int blockSize = threadsPerBlock;
+        int numBlocks = (N + blockSize - 1) / blockSize;
+        if (numBlocks > blocksPerGrid) numBlocks = blocksPerGrid;
+        unsigned long int threads = blockSize * numBlocks;
+        
+        // Not enough threads for 1 call per line
+        if (N > threads) {
+            unsigned long int it = N / threads;
+            unsigned long int n = threads;
+            float *m_rows;
+            printf("it: %lu; n: %lu;\n", it, n);
+            for (unsigned long int i = 0; i < matrix->height; i++) {
+                m_rows = matrix->d_rows;
+                cudaMemcpy(matrix->d_rows, matrix->h_rows + N * i, size, cudaMemcpyHostToDevice);
+                for (unsigned long int j = 0; j < it; j++, m_rows += n) {
+                    scalar_mult<<<numBlocks, blockSize>>>(n, n*j, scalar_value, m_rows);
+                }
+                // last iteration
+                scalar_mult<<<numBlocks, blockSize>>>((n * (it + 1)) % N, n*it, scalar_value, m_rows + n);
+                cudaDeviceSynchronize();
+                cudaMemcpy(matrix->h_rows + N * i, matrix->d_rows, size, cudaMemcpyHostToDevice);
+            }
+        // Enough threads for 1 call per line
+        } else {
+            for (unsigned long int i = 0; i < matrix->height; i++) {
+                cudaMemcpy(matrix->d_rows, matrix->h_rows + N * i, size, cudaMemcpyHostToDevice);
+                scalar_mult<<<numBlocks, blockSize>>>(N, 0, scalar_value, matrix->d_rows);
+                cudaDeviceSynchronize();
+                cudaMemcpy(matrix->h_rows + N * i, matrix->d_rows, size, cudaMemcpyHostToDevice);
+            }
+        }
+    }
+    
     return 1;
 }
 
@@ -78,7 +139,7 @@ int matrix_matrix_mult(struct matrix *matrixA, struct matrix *matrixB, struct ma
 
     //print_matrix(matrixA);
     //print_matrix(matrixB);
-    print_matrix(matrixC);
+    //print_matrix(matrixC);
 
     return 1;
 }

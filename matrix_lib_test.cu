@@ -163,12 +163,6 @@ int main(int argc, char *argv[]) {
     gettimeofday(&t_stop, NULL);
     printf("scalar_matrix_mult time: %f ms\n", timedifference_msec(t_start, t_stop));
     if (!ok1) printf("scalar_matrix_mult failed!\n");
-    
-    error = cudaMemcpy(A.h_rows, A.d_rows, sizeof(float) * A_height * A_width, cudaMemcpyDeviceToHost);
-    if (error != cudaSuccess){
-        printf("scalar_matrix_mult error: %d", error);
-        return 1;
-    }
 
     print_matrix(&A);
 

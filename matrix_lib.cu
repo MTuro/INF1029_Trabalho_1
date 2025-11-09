@@ -45,14 +45,17 @@ int scalar_matrix_mult(float scalar_value, struct matrix *matrix) {
         if (N > threads) {
             unsigned long int it = N / threads;
             unsigned long int n = threads;
-            float *m_rows = matrix->d_rows;
+            unsigned long int remaining;
             printf("it: %lu; n: %lu;\n", it, n);
-            for (unsigned long int i = 0; i < it; i++, m_rows += n) {
-                // printf("i: %lu\n", i);
-                scalar_mult<<<numBlocks, blockSize>>>(n, n*i, scalar_value, m_rows);
+            // Use fixed base pointer (matrix->d_rows) and offset into it.
+            for (unsigned long int i = 0; i < it; i++) {
+                scalar_mult<<<numBlocks, blockSize>>>(n, n*i, scalar_value, matrix->d_rows);
             }
-            // last iteration
-            scalar_mult<<<numBlocks, blockSize>>>((n * (it + 1)) % N, n*it, scalar_value, m_rows + n);
+            // last (partial) iteration, if any
+            remaining = N - it * n;
+            if (remaining > 0) {
+                scalar_mult<<<numBlocks, blockSize>>>(remaining, it * n, scalar_value, matrix->d_rows);
+            }
         // Enough threads for 1 call
         } else {
             scalar_mult<<<numBlocks, blockSize>>>(N, 0, scalar_value, matrix->d_rows);
@@ -75,16 +78,20 @@ int scalar_matrix_mult(float scalar_value, struct matrix *matrix) {
         if (N > threads) {
             unsigned long int it = N / threads;
             unsigned long int n = threads;
-            float *m_rows;
+            unsigned long int remaining;
             printf("it: %lu; n: %lu;\n", it, n);
             for (unsigned long int i = 0; i < matrix->height; i++) {
-                m_rows = matrix->d_rows;
+                // copy one row to device
                 cudaMemcpy(matrix->d_rows, matrix->h_rows + N * i, size, cudaMemcpyHostToDevice);
-                for (unsigned long int j = 0; j < it; j++, m_rows += n) {
-                    scalar_mult<<<numBlocks, blockSize>>>(n, n*j, scalar_value, m_rows);
+                // launch full chunks using fixed base pointer and offsets
+                for (unsigned long int j = 0; j < it; j++) {
+                    scalar_mult<<<numBlocks, blockSize>>>(n, n*j, scalar_value, matrix->d_rows);
                 }
-                // last iteration
-                scalar_mult<<<numBlocks, blockSize>>>((n * (it + 1)) % N, n*it, scalar_value, m_rows + n);
+                // last partial chunk if necessary
+                remaining = N - it * n;
+                if (remaining > 0) {
+                    scalar_mult<<<numBlocks, blockSize>>>(remaining, it * n, scalar_value, matrix->d_rows);
+                }
                 cudaDeviceSynchronize();
                 cudaMemcpy(matrix->h_rows + N * i, matrix->d_rows, size, cudaMemcpyHostToDevice);
             }

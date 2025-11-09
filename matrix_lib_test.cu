@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     unsigned long int mem_to_alloc = sizeof(float) * (
         A_height * A_width +
         B_height * B_width +
-        A_height * B_width) / 1000000;
+        A_height * B_width) / 1024000;
     if (mem_to_alloc <= max_gpu_memory) {
         printf("Allocating all matrices in GPU\n");
         error = cudaMalloc(&A.d_rows, sizeof(float) * A_height * A_width);
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
         C.alloc_mode = 1; // FULL_ALLOC
     }
     else {
-        mem_to_alloc = sizeof(float) * (A_width + B_height * B_width + B_width) / 1000000;
+        mem_to_alloc = sizeof(float) * (A_width + B_height * B_width + B_width) / 1024000;
         if (mem_to_alloc <= max_gpu_memory) {
             printf("Partially allocating matrices in GPU\n");
             error = cudaMalloc(&A.d_rows, sizeof(float) * A_width);
